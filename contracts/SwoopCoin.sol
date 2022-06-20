@@ -106,6 +106,7 @@ contract SaleContract {
     uint32 public payingClientCount = 0;
     bool private saleExpired = false;
     uint256 public cancelCommission; //in Wei
+    bool private saleInactive = false;
 
     constructor(
         address _store,
@@ -131,6 +132,7 @@ contract SaleContract {
             "Sale has already reached minimum number of required users."
         );
         require(!isSaleExpired(), "Sale has expired.");
+        require(!saleInactive, "Sale is canceled or no longer active.");
 
         //balances[msg.sender] += msg.value;
         clients[msg.sender] = true;
@@ -139,7 +141,10 @@ contract SaleContract {
 
         emit DepositReceived(msg.sender);
 
-        if (isSaleTargetReached()) emit SaleTargetReached();
+        if (isSaleTargetReached()) {
+            emit SaleTargetReached();
+            saleInactive = true;
+        }
     }
 
     function isSaleExpired() private view returns (bool) {
@@ -149,8 +154,12 @@ contract SaleContract {
         return block.timestamp >= sale.endDate; //todo: take 900 seconds into account?
     }
 
-    function isSaleTargetReached() public view returns (bool) {
+    function isSaleTargetReached() private view returns (bool) {
         return (payingClientCount == sale.minNumberOfClients);
+    }
+
+    function isSaleStillActive() public view returns (bool) {
+        return (!saleInactive);
     }
 
     modifier isStoreOwner() {
@@ -171,7 +180,6 @@ contract SaleContract {
             !isSaleTargetReached(),
             "Sale has already reached minimum number of required users. You can not get refunded any longer."
         );
-        //require(isSaleExpired(), "Sale has not expired yet.");
 
         payingClientCount--;
         clients[msg.sender] = false; // pattern: checks effects interaction
@@ -199,10 +207,13 @@ contract SaleContract {
     }
 
     function cancelSale() external payable isStoreOwner {
+        require(!saleInactive, "Sale is not active");
         require(
             msg.value == cancelCommission,
             "Cancel commission amount not sent. Aborting."
         );
+
+        saleInactive = true;
 
         (SaleCreator(payable(master))).receiveCancelCommission{
             value: msg.value
