@@ -154,7 +154,7 @@ contract SaleContract {
         return block.timestamp >= sale.endDate; //todo: take 900 seconds into account?
     }
 
-    function isSaleTargetReached() private view returns (bool) {
+    function isSaleTargetReached() public view returns (bool) {
         return (payingClientCount == sale.minNumberOfClients);
     }
 
