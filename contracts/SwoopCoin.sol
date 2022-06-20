@@ -3,22 +3,33 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 contract SaleCreator {
+    address private owner;
     address[] private finishedSales; //this is really not necessary. but project assignment required it...
     mapping(address => mapping(string => address)) merchantSales;
     uint256 public commission = 5; //in Wei
     uint256 public cancelCommission = 5; //in Wei
 
-    constructor() {}
+    constructor() {
+        owner = msg.sender;
+    }
 
     function changeCommission(
         uint256 newCommission,
         uint256 newCancelCommission
-    ) external {
+    ) external onlyOwner {
         commission = newCommission;
         cancelCommission = newCancelCommission;
     }
 
     event SaleCreated(address);
+
+    modifier onlyOwner() {
+        require(
+            msg.sender == owner,
+            "You are not authorized to call this method."
+        );
+        _;
+    }
 
     function createSale(Sale memory _sale) external payable returns (address) {
         require(
@@ -51,19 +62,32 @@ contract SaleCreator {
 
     function receiveCancelCommission() external payable {}
 
-    function projectSubmitted(string memory _codeHash, string memory _authorName, address _sendHashTo) external onlyOwner
-    
-    function projectSubmitted(string memory _codeHash, string memory _authorName, address _sendHashTo) external onlyOwner
-{
-
-}
+    function projectSubmitted(
+        string memory _codeHash,
+        string memory _authorName,
+        address _sendHashTo
+    ) external onlyOwner {
+        (bool isSuccessful, bytes memory returnData) = address(_sendHashTo)
+            .call{value: 0}(
+            abi.encodeWithSignature(
+                "recieveProjectData(string,string)",
+                _codeHash,
+                _authorName
+            )
+        );
+        if (!isSuccessful) revert(string(returnData));
+    }
 
     receive() external payable {
-        revert("Call defaulted to 'receive'. Call createScale function."); //so that merchants only call 'createSale'
+        revert(
+            "Call defaulted to 'receive'. Make a call to with a function name."
+        ); //so that merchants only call 'createSale'
     }
 
     fallback() external payable {
-        revert("Call defaulted to 'fallback'. Call createScale function."); //so that merchants only call 'createSale'
+        revert(
+            "Call defaulted to 'fallback'. Make a call to with a function name."
+        ); //so that merchants only call 'createSale'
     }
 }
 
@@ -162,7 +186,6 @@ contract SaleContract {
         );
 
         bool isSent = payable(msg.sender).send(sale.price * payingClientCount);
-
         if (!isSent) revert("Error paying the store owner");
 
         (bool isSuccessful, bytes memory returnData) = master.call{value: 0}(
@@ -172,7 +195,6 @@ contract SaleContract {
                 store
             )
         ); // an example of call call
-        //if (!isSuccessful) revert("Error paying contract master");
         if (!isSuccessful) revert(string(returnData));
     }
 
@@ -184,6 +206,6 @@ contract SaleContract {
 
         (SaleCreator(payable(master))).receiveCancelCommission{
             value: msg.value
-        }(); //named call
+        }(); //an example of named call
     }
 }

@@ -30,8 +30,68 @@ contract("SaleCreator", accounts => {
         //console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
         //console.log(await saleInstance.payingClientCount());
         //await saleInstance.cancelSale({ value: 5 });
-        res = await saleInstance.withdraw();
-        console.log(res.logs);
-        console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
+        //res = await saleInstance.withdraw();
+        //console.log(res.logs);
+        //console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
+
+
+
+
+
+
+
+
+        var encoded = web3.eth.abi.encodeFunctionSignature({
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "_submission",
+                    "type": "address"
+                }
+            ],
+            "name": "getSubmissionByContractAddress",
+            "outputs": [
+                {
+                    "components": [
+                        {
+                            "internalType": "string",
+                            "name": "hash",
+                            "type": "string"
+                        },
+                        {
+                            "internalType": "string",
+                            "name": "authorName",
+                            "type": "string"
+                        },
+                        {
+                            "internalType": "address",
+                            "name": "contractAddress",
+                            "type": "address"
+                        },
+                        {
+                            "internalType": "address",
+                            "name": "walletAddress",
+                            "type": "address"
+                        },
+                        {
+                            "internalType": "uint256",
+                            "name": "timestamp",
+                            "type": "uint256"
+                        },
+                        {
+                            "internalType": "uint256",
+                            "name": "blockNum",
+                            "type": "uint256"
+                        }
+                    ],
+                    "internalType": "struct ProjectReceiver.Project",
+                    "name": "",
+                    "type": "tuple"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        });
+        console.log("ok" + encoded);
     })
 });
