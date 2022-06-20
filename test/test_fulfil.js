@@ -11,13 +11,27 @@ contract("SaleCreator", accounts => {
             saleCode: "saleCode1",
             price: 1000,
             endDate: secondsSinceEpoch + 10,
-            minNumberOfClients: 10
+            minNumberOfClients: 3
         }, { value: 5 });
+
         console.log(res.logs);
         var saleInstance = await SaleContract.at(res.logs[0].args["0"]);
-        //console.log(saleInstance);
-        console.log(await saleInstance.payingClientCount());
+        console.log(await saleInstance.sale());
+        console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
         res = await saleInstance.sendTransaction({ value: 1000 });
-        saleInstance = await SaleContract.at(res.logs);
+        console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
+        //console.log(await saleInstance.payingClientCount());
+        res = await saleInstance.sendTransaction({ value: 1000, from: accounts[1] });
+        console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
+        //console.log(await saleInstance.payingClientCount());
+        res = await saleInstance.sendTransaction({ value: 1000, from: accounts[2] });
+        //console.log(res.logs);
+        //res = await saleInstance.retrieveRefund({ from: accounts[1] });
+        //console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
+        //console.log(await saleInstance.payingClientCount());
+        //await saleInstance.cancelSale({ value: 5 });
+        res = await saleInstance.withdraw();
+        console.log(res.logs);
+        console.log((await web3.eth.getBalance(instance.address)) + ":" + await web3.eth.getBalance(saleInstance.address));
     })
 });

@@ -3,15 +3,19 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 contract SaleCreator {
-    address[] private finishedSales;
+    address[] private finishedSales; //this is really not necessary. but project assignment required it...
     mapping(address => mapping(string => address)) merchantSales;
     uint256 public commission = 5; //in Wei
     uint256 public cancelCommission = 5; //in Wei
 
     constructor() {}
 
-    function changeCommission(uint256 newCommission) external {
+    function changeCommission(
+        uint256 newCommission,
+        uint256 newCancelCommission
+    ) external {
         commission = newCommission;
+        cancelCommission = newCancelCommission;
     }
 
     event SaleCreated(address);
@@ -26,21 +30,33 @@ contract SaleCreator {
             "The sale already exists for the sale code provided."
         );
 
-        address newSale = address(new SaleContract(msg.sender, _sale));
+        address newSale = address(
+            new SaleContract(msg.sender, cancelCommission, _sale)
+        );
+        merchantSales[msg.sender][_sale.saleCode] = newSale;
 
         emit SaleCreated(newSale);
 
         return newSale;
     }
 
-    function saleFinished(string memory saleCode) public {
+    function saleFinished(string memory saleCode, address store) public {
         require(
-            merchantSales[msg.sender][saleCode] != address(0),
-            "Sale does not exist."
+            merchantSales[store][saleCode] == msg.sender,
+            string.concat("Sale does not exist: ", saleCode)
         );
 
         finishedSales.push(msg.sender);
     }
+
+    function receiveCancelCommission() external payable {}
+
+    function projectSubmitted(string memory _codeHash, string memory _authorName, address _sendHashTo) external onlyOwner
+    
+    function projectSubmitted(string memory _codeHash, string memory _authorName, address _sendHashTo) external onlyOwner
+{
+
+}
 
     receive() external payable {
         revert("Call defaulted to 'receive'. Call createScale function."); //so that merchants only call 'createSale'
@@ -65,16 +81,22 @@ contract SaleContract {
     mapping(address => bool) private clients;
     uint32 public payingClientCount = 0;
     bool private saleExpired = false;
-    uint256 public cancelCommission = 5; //in Wei
+    uint256 public cancelCommission; //in Wei
 
-    constructor(address _store, Sale memory _sale) {
+    constructor(
+        address _store,
+        uint256 _cancelCommission,
+        Sale memory _sale
+    ) {
         require(_sale.price > 0, "Sale price can not be zero or negative.");
 
         master = msg.sender;
+        cancelCommission = _cancelCommission;
         store = _store;
         sale = _sale;
     }
 
+    event DepositReceived(address);
     event SaleTargetReached();
 
     receive() external payable {
@@ -90,6 +112,8 @@ contract SaleContract {
         clients[msg.sender] = true;
 
         payingClientCount++;
+
+        emit DepositReceived(msg.sender);
 
         if (isSaleTargetReached()) emit SaleTargetReached();
     }
@@ -116,15 +140,16 @@ contract SaleContract {
     //pattern: pull instead of push
     function retrieveRefund() external {
         require(
-            !isSaleTargetReached(),
-            "Sale has already reached minimum number of required users. You can not get refunded any longer."
-        );
-        require(isSaleExpired(), "Sale has not expired yet.");
-        require(
             clients[msg.sender] == true,
             "You are not a depositor or already have been refunded. You can not get refunded."
         );
+        require(
+            !isSaleTargetReached(),
+            "Sale has already reached minimum number of required users. You can not get refunded any longer."
+        );
+        //require(isSaleExpired(), "Sale has not expired yet.");
 
+        payingClientCount--;
         clients[msg.sender] = false; // pattern: checks effects interaction
 
         payable(msg.sender).transfer(sale.price);
@@ -138,19 +163,27 @@ contract SaleContract {
 
         bool isSent = payable(msg.sender).send(sale.price * payingClientCount);
 
-        if (isSent) (SaleCreator(payable(master))).saleFinished(sale.saleCode);
-        else revert();
-        //require(isSent, "withdraw unsuccessful.");
+        if (!isSent) revert("Error paying the store owner");
+
+        (bool isSuccessful, bytes memory returnData) = master.call{value: 0}(
+            abi.encodeWithSignature(
+                "saleFinished(string,address)",
+                sale.saleCode,
+                store
+            )
+        ); // an example of call call
+        //if (!isSuccessful) revert("Error paying contract master");
+        if (!isSuccessful) revert(string(returnData));
     }
 
     function cancelSale() external payable isStoreOwner {
         require(
             msg.value == cancelCommission,
-            "Commission amount not sent. Aborting."
+            "Cancel commission amount not sent. Aborting."
         );
 
-        (bool isSuccessful, ) = master.call{value: msg.value}("");
-
-        require(isSuccessful, "cancelSale unsuccessful.");
+        (SaleCreator(payable(master))).receiveCancelCommission{
+            value: msg.value
+        }(); //named call
     }
 }
