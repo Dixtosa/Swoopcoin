@@ -19,7 +19,7 @@ contract SaleCreator {
     function createSale(Sale memory _sale) external payable returns (address) {
         require(
             msg.value == commission,
-            "Commission amount not sent. Aborting."
+            "Commission amount not equal to specified amount. Aborting."
         );
         require(
             merchantSales[msg.sender][_sale.saleCode] == address(0),
